@@ -8,21 +8,17 @@
     request))
 
 (defn findMatch [rootPath rootRelativePath extension request]
-  (let [normalizedRequest (normalize request extension)]
-    (loop [files (filter #(.endsWith (.getName %) (str "Request." extension)) (file-seq (io/file (str rootPath "/" rootRelativePath))))]
-      (if files
-        (let [matches (re-matches (re-pattern (normalize (slurp (first files)) extension)) normalizedRequest)]
-          (if matches
-            {:matchingRequestFile (first files) :matches matches}
-            (recur (next files))))))))
+  (let [matches (volatile! nil)]
+    {:matchingRequestFile (first (filter #(and (.endsWith (.getName %) (str "Request." extension))
+                                               (vreset! matches (re-matches (re-pattern (normalize (slurp %) extension)) (normalize request extension))))
+                                         (file-seq (io/file (str rootPath "/" rootRelativePath)))))
+     :matches @matches}))
 
 (defn getResponse [matchingRequestFile matches]
-  (loop [response (slurp (io/file (.getParent matchingRequestFile) (.replaceFirst (.getName matchingRequestFile) "Request" "Response")))
-         matches (if (coll? matches) (next matches))
-         index 1]
-    (if matches
-      (recur (.replaceAll response (str "[$]+[{]+" index "[}]+") (first matches)) (next matches) (inc index))
-      response)))
+  ((reduce (fn [accum match] [(.replaceAll (accum 0) (str "[$]+[{]+" (accum 1) "[}]+") match) (inc (accum 1))])
+           [(slurp (io/file (.getParent matchingRequestFile) (.replaceFirst (.getName matchingRequestFile) "Request" "Response"))) 1]
+           (if (coll? matches) (next matches) '()))
+   0))
 
 (defn getProperties [matchingRequestFile]
   (let [propertiesFile (io/file (.getParent matchingRequestFile) (.replaceFirst (.getName matchingRequestFile) "Request.*" ".properties"))]
