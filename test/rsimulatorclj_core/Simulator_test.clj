@@ -23,10 +23,10 @@
     "<response>response</response>\n" (getResponse (io/file "./test/rsimulatorclj_core/Test1Request.xml") "<response>response</response>")
     "<response>foobar</response>\n" (getResponse (io/file "./test/rsimulatorclj_core/Test2Request.xml") '("<xml><foo>foo</foo><bar>bar</bar></xml>" "foo" "bar"))))
 
-(deftest getProperties-test
+(deftest getConfig-test
   (are [expect actual] (= expect actual)
-    nil (getProperties (io/file "./test/rsimulatorclj_core/Test1Request.xml"))
-    "foo" (.getProperty (getProperties (io/file "./test/rsimulatorclj_core/Test2Request.xml")) "foo")))
+    nil (getConfig (io/file "./test/rsimulatorclj_core/Test1Request.xml"))
+    "foo" (:foo (getConfig (io/file "./test/rsimulatorclj_core/Test2Request.xml")))))
 
 (deftest service-testNonMatching
   (are [expect actual] (= expect actual)    
@@ -44,4 +44,4 @@
     (are [expect actual] (= expect actual)
       "Test2Request.xml" (.getName (:matchingRequestFile simulatorResponse))
       "<xml><response>foobar</response></xml>" (:response simulatorResponse)
-      "foo" (.get (:properties simulatorResponse) "foo"))))
+      "foo" (:foo (:config simulatorResponse)))))
