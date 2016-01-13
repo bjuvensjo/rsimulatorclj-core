@@ -1,6 +1,10 @@
 (ns rsimulatorclj-core.Simulator
   (:require [clojure.data.xml :as xml]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [taoensso.timbre :as timbre
+             :refer (log trace debug info warn error fatal report
+                         logf tracef debugf infof warnf errorf fatalf reportf
+                         spy get-env log-env)]))
 
 (defn normalize [request extension]
   (case extension
@@ -34,11 +38,14 @@
 
 (defn service [rootPath rootRelativePath request contentType]
   (let [scriptMap (applyScript {:rootPath rootPath :rootRelativePath rootRelativePath :request request :contentType contentType} (io/file (str rootPath "/GlobalRequest.clj")))]
+    (info "entry:" scriptMap)
     (or (:simulatorResponse scriptMap)
         (let [{matchingRequestFile :matchingRequestFile matches :matches} (findMatch rootPath rootRelativePath ({:txt "txt" :xml "xml"} (keyword contentType)) request)]
           (if matchingRequestFile
-            (-> scriptMap
-                (assoc :simulatorResponse (SimulatorResponse. matchingRequestFile (getResponse matchingRequestFile matches) (getConfig matchingRequestFile)))
-                (applyScript (io/file (.getParent matchingRequestFile) (.replaceFirst (.getName matchingRequestFile) "Request.*" ".clj")))
-                (applyScript (io/file (str rootPath "/GlobalResponse.clj")))
-                :simulatorResponse))))))
+            (let [scriptMap (-> scriptMap
+                                (assoc :simulatorResponse (SimulatorResponse. matchingRequestFile (getResponse matchingRequestFile matches) (getConfig matchingRequestFile)))
+                                (applyScript (io/file (.getParent matchingRequestFile) (.replaceFirst (.getName matchingRequestFile) "Request.*" ".clj")))
+                                (applyScript (io/file (str rootPath "/GlobalResponse.clj"))))]
+              (info "exit:" scriptMap)
+              (:simulatorResponse scriptMap))
+            (info "exit: No response found" scriptMap))))))
