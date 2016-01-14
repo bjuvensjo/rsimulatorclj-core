@@ -37,8 +37,9 @@
 (defrecord SimulatorResponse [matchingRequestFile response config])
 
 (defn service [rootPath rootRelativePath request contentType]
-  (let [scriptMap (applyScript {:rootPath rootPath :rootRelativePath rootRelativePath :request request :contentType contentType} (io/file (str rootPath "/GlobalRequest.clj")))]
-    (info "entry:" scriptMap)
+  (let [scriptMap {:rootPath rootPath :rootRelativePath rootRelativePath :request request :contentType contentType}
+        _ (info "entry:" scriptMap)
+        scriptMap (applyScript scriptMap (io/file (str rootPath "/GlobalRequest.clj")))]
     (or (:simulatorResponse scriptMap)
         (let [{matchingRequestFile :matchingRequestFile matches :matches} (findMatch rootPath rootRelativePath ({:txt "txt" :xml "xml"} (keyword contentType)) request)]
           (if matchingRequestFile
